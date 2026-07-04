@@ -1,0 +1,6 @@
+# Python
+__pycache__/
+
+# C#
+csharp/**/bin/
+csharp/**/obj/
