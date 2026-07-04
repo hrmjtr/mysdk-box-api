@@ -13,53 +13,62 @@ type Client struct {
 	// HTTPClient を差し替えるとタイムアウト等を設定できる。
 	HTTPClient *http.Client
 
-	baseURL string
-	apiKey  string
+	baseURL     string
+	accessToken string
 }
 
-func New(baseURL, apiKey string) *Client {
+func New(baseURL, accessToken string) *Client {
 	return &Client{
-		HTTPClient: http.DefaultClient,
-		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		apiKey:     apiKey,
+		HTTPClient:  http.DefaultClient,
+		baseURL:     strings.TrimSuffix(baseURL, "/"),
+		accessToken: accessToken,
 	}
 }
 
-func (c *Client) Space() (Space, error)          { return get[Space](c, "/space", nil) }
-func (c *Client) Projects() ([]Project, error)   { return get[[]Project](c, "/projects", nil) }
-func (c *Client) Users() ([]User, error)         { return get[[]User](c, "/users", nil) }
-func (c *Client) Statuses() ([]Status, error)    { return get[[]Status](c, "/statuses", nil) }
-func (c *Client) Priorities() ([]Priority, error) {
-	return get[[]Priority](c, "/priorities", nil)
-}
+func (c *Client) CurrentUser() (User, error) { return get[User](c, "/users/me", nil) }
 
-func (c *Client) Project(idOrKey string) (Project, error) {
-	return get[Project](c, "/projects/"+idOrKey, nil)
-}
+func (c *Client) User(id string) (User, error) { return get[User](c, "/users/"+id, nil) }
+
+func (c *Client) Folder(id string) (Folder, error) { return get[Folder](c, "/folders/"+id, nil) }
 
 // params にはクエリパラメータを渡せる(不要なら nil)。
-func (c *Client) Issues(params url.Values) ([]Issue, error) {
-	return get[[]Issue](c, "/issues", params)
+func (c *Client) FolderItems(id string, params url.Values) (Collection[Item], error) {
+	return get[Collection[Item]](c, "/folders/"+id+"/items", params)
 }
 
-func (c *Client) Issue(idOrKey string) (Issue, error) {
-	return get[Issue](c, "/issues/"+idOrKey, nil)
+func (c *Client) FolderCollaborations(id string) (Collection[Collaboration], error) {
+	return get[Collection[Collaboration]](c, "/folders/"+id+"/collaborations", nil)
 }
 
-func (c *Client) IssueComments(idOrKey string) ([]Comment, error) {
-	return get[[]Comment](c, "/issues/"+idOrKey+"/comments", nil)
+func (c *Client) File(id string) (File, error) { return get[File](c, "/files/"+id, nil) }
+
+func (c *Client) FileComments(id string) (Collection[Comment], error) {
+	return get[Collection[Comment]](c, "/files/"+id+"/comments", nil)
+}
+
+func (c *Client) Search(query string, params url.Values) (Collection[Item], error) {
+	merged := url.Values{}
+	for key, values := range params {
+		merged[key] = values
+	}
+	merged.Set("query", query)
+	return get[Collection[Item]](c, "/search", merged)
 }
 
 func get[T any](c *Client, path string, params url.Values) (T, error) {
 	var v T
 
-	query := url.Values{}
-	for key, values := range params {
-		query[key] = values
+	requestURL := c.baseURL + path
+	if len(params) > 0 {
+		requestURL += "?" + params.Encode()
 	}
-	query.Set("apiKey", c.apiKey)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return v, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.accessToken)
 
-	res, err := c.HTTPClient.Get(c.baseURL + path + "?" + query.Encode())
+	res, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return v, err
 	}

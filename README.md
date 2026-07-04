@@ -1,6 +1,7 @@
 # mysdk-box
 
-box API を利用するための、小さく分かりやすい API ライブラリ集。
+Box API(box.com / Box Platform REST API)を利用するための、
+小さく分かりやすい API ライブラリ集。
 
 本番利用向けの SDK ではなく、自分で実装する際の「動くドキュメント」
 「リファレンス実装」として利用することを目的とする。
@@ -25,7 +26,7 @@ docs/     再実装のためのドキュメント
 
 自分で再実装するときは、次の順で読む。
 
-1. [docs/api.md](docs/api.md) — box API の共通仕様(エンドポイント、データモデル、エラー分類)
+1. [docs/api.md](docs/api.md) — Box API の共通仕様(エンドポイント、データモデル、エラー分類)
 2. 実装する言語の解説 — 設計の要点、再実装チェックリスト、拡張の指針
    - [docs/ruby.md](docs/ruby.md) — Ruby 実装の解説
    - [docs/python.md](docs/python.md) — Python 実装の解説(Ruby 経験者向け)
@@ -37,26 +38,25 @@ Ruby 実装との違いを軸に書いてある。
 
 ## 対応 API
 
-読み取り系のみ。パスは `base_url` からの相対で統一している。
+読み取り系のみ。パスは `base_url`(通常 `https://api.box.com/2.0`)からの相対で統一している。
 
-| 機能             | パス                       |
-|------------------|----------------------------|
-| スペース情報取得 | `GET /space`               |
-| プロジェクト一覧 | `GET /projects`            |
-| プロジェクト情報 | `GET /projects/{id}`       |
-| 課題一覧         | `GET /issues`              |
-| 課題情報         | `GET /issues/{id}`         |
-| 課題コメント一覧 | `GET /issues/{id}/comments`|
-| ユーザー一覧     | `GET /users`               |
-| 状態一覧         | `GET /statuses`            |
-| 優先度一覧       | `GET /priorities`          |
+| 機能                   | パス                               |
+|------------------------|------------------------------------|
+| 現在のユーザー情報     | `GET /users/me`                    |
+| ユーザー情報           | `GET /users/{id}`                  |
+| フォルダ情報           | `GET /folders/{id}`                |
+| フォルダ内アイテム一覧 | `GET /folders/{id}/items`          |
+| コラボレーション一覧   | `GET /folders/{id}/collaborations` |
+| ファイル情報           | `GET /files/{id}`                  |
+| ファイルコメント一覧   | `GET /files/{id}/comments`         |
+| 検索                   | `GET /search?query=...`            |
 
-認証は API キーをクエリパラメータ `apiKey` で渡す方式。
+認証はアクセストークンを `Authorization: Bearer <token>` ヘッダーで渡す方式。
 
 ## エラー処理
 
-box API は HTTP 200 でも異常なレスポンス(空 Body、途中で切れた JSON、
-壊れた JSON)を返す場合があるため、各実装で以下を区別して扱う。
+HTTP 200 でも異常なレスポンス(空 Body、途中で切れた JSON、壊れた JSON)が
+返る場合を想定し、各実装で以下を区別して扱う。
 
 | 種別             | 内容                                     |
 |------------------|------------------------------------------|
@@ -77,13 +77,17 @@ python3 mock/server.py
 
 # ターミナル 2: 各言語のサンプルを実行
 export BOX_BASE_URL=http://localhost:8793
-export BOX_API_KEY=dummy-key
+export BOX_ACCESS_TOKEN=dummy-token
 
 ruby ruby/example.rb
 python3 python/example.py
 (cd go && go run ./example)
 (cd csharp && dotnet run --project Example)
 ```
+
+実際の Box API に対して動かす場合は、`BOX_BASE_URL` を外し
+(デフォルトで `https://api.box.com/2.0` が使われる)、
+`BOX_ACCESS_TOKEN` に開発者コンソールで発行した Developer Token を設定する。
 
 モックサーバーには、エラー処理の動作確認用に壊れたエンドポイント
 (`/broken/empty`, `/broken/truncated`, `/broken/http-error` など)も用意している。

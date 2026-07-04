@@ -1,33 +1,35 @@
 using MySdk.Box;
 
 var client = new Client(
-    baseUrl: Environment.GetEnvironmentVariable("BOX_BASE_URL")!,
-    apiKey: Environment.GetEnvironmentVariable("BOX_API_KEY")!);
+    baseUrl: Environment.GetEnvironmentVariable("BOX_BASE_URL") ?? "https://api.box.com/2.0",
+    accessToken: Environment.GetEnvironmentVariable("BOX_ACCESS_TOKEN")!);
 
 try
 {
-    var space = await client.GetSpaceAsync();
-    Console.WriteLine($"space: {space.Name} ({space.SpaceKey})");
+    var me = await client.GetCurrentUserAsync();
+    Console.WriteLine($"current user: {me.Name} <{me.Login}>");
 
-    Console.WriteLine("\nprojects:");
-    foreach (var project in await client.GetProjectsAsync())
-        Console.WriteLine($"  [{project.ProjectKey}] {project.Name}");
+    var root = await client.GetFolderAsync("0");
+    Console.WriteLine($"\nfolder: {root.Name} (size={root.Size})");
 
-    Console.WriteLine("\nissues:");
-    foreach (var issue in await client.GetIssuesAsync())
-        Console.WriteLine($"  {issue.IssueKey}: {issue.Summary} ({issue.Status.Name})");
+    Console.WriteLine("\nitems in folder 0:");
+    foreach (var item in (await client.GetFolderItemsAsync("0")).Entries)
+        Console.WriteLine($"  [{item.Type}] {item.Name} (id={item.Id})");
 
-    var issueKey = "DEMO-1";
-    Console.WriteLine($"\ncomments on {issueKey}:");
-    foreach (var comment in await client.GetIssueCommentsAsync(issueKey))
-        Console.WriteLine($"  {comment.CreatedUser.Name}: {comment.Content}");
+    var file = await client.GetFileAsync("101");
+    Console.WriteLine($"\nfile: {file.Name} size={file.Size} sha1={file.Sha1}");
 
-    var users = await client.GetUsersAsync();
-    var statuses = await client.GetStatusesAsync();
-    var priorities = await client.GetPrioritiesAsync();
-    Console.WriteLine($"\nusers:      {string.Join(", ", users.Select(u => u.Name))}");
-    Console.WriteLine($"statuses:   {string.Join(", ", statuses.Select(s => s.Name))}");
-    Console.WriteLine($"priorities: {string.Join(", ", priorities.Select(p => p.Name))}");
+    Console.WriteLine("\ncomments on file 101:");
+    foreach (var comment in (await client.GetFileCommentsAsync("101")).Entries)
+        Console.WriteLine($"  {comment.CreatedBy.Name}: {comment.Message}");
+
+    Console.WriteLine("\ncollaborations on folder 11:");
+    foreach (var collab in (await client.GetFolderCollaborationsAsync("11")).Entries)
+        Console.WriteLine($"  {collab.AccessibleBy.Name}: {collab.Role}");
+
+    Console.WriteLine("\nsearch \"report\":");
+    foreach (var item in (await client.SearchAsync("report")).Entries)
+        Console.WriteLine($"  [{item.Type}] {item.Name}");
 }
 catch (BoxHttpException e)
 {

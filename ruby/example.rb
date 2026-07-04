@@ -2,33 +2,39 @@ $LOAD_PATH.unshift File.expand_path("lib", __dir__)
 require "mysdk-box"
 
 client = MySdk::Box::Client.new(
-  base_url: ENV.fetch("BOX_BASE_URL"),
-  api_key: ENV.fetch("BOX_API_KEY")
+  base_url: ENV.fetch("BOX_BASE_URL", "https://api.box.com/2.0"),
+  access_token: ENV.fetch("BOX_ACCESS_TOKEN")
 )
 
 begin
-  space = client.space
-  puts "space: #{space["name"]} (#{space["spaceKey"]})"
+  me = client.current_user
+  puts "current user: #{me["name"]} <#{me["login"]}>"
 
-  puts "\nprojects:"
-  client.projects.each do |project|
-    puts "  [#{project["projectKey"]}] #{project["name"]}"
+  root = client.folder("0")
+  puts "\nfolder: #{root["name"]} (size=#{root["size"]})"
+
+  puts "\nitems in folder 0:"
+  client.folder_items("0")["entries"].each do |item|
+    puts "  [#{item["type"]}] #{item["name"]} (id=#{item["id"]})"
   end
 
-  puts "\nissues:"
-  client.issues.each do |issue|
-    puts "  #{issue["issueKey"]}: #{issue["summary"]} (#{issue.dig("status", "name")})"
+  file = client.file("101")
+  puts "\nfile: #{file["name"]} size=#{file["size"]} sha1=#{file["sha1"]}"
+
+  puts "\ncomments on file 101:"
+  client.file_comments("101")["entries"].each do |comment|
+    puts "  #{comment.dig("created_by", "name")}: #{comment["message"]}"
   end
 
-  issue_key = "DEMO-1"
-  puts "\ncomments on #{issue_key}:"
-  client.issue_comments(issue_key).each do |comment|
-    puts "  #{comment.dig("createdUser", "name")}: #{comment["content"]}"
+  puts "\ncollaborations on folder 11:"
+  client.folder_collaborations("11")["entries"].each do |collab|
+    puts "  #{collab.dig("accessible_by", "name")}: #{collab["role"]}"
   end
 
-  puts "\nusers:      #{client.users.map { |u| u["name"] }.join(", ")}"
-  puts "statuses:   #{client.statuses.map { |s| s["name"] }.join(", ")}"
-  puts "priorities: #{client.priorities.map { |p| p["name"] }.join(", ")}"
+  puts "\nsearch \"report\":"
+  client.search("report")["entries"].each do |item|
+    puts "  [#{item["type"]}] #{item["name"]}"
+  end
 rescue MySdk::Box::HttpError => e
   warn "HTTP error: status=#{e.status} body=#{e.body}"
   exit 1

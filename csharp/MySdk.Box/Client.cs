@@ -1,44 +1,56 @@
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace MySdk.Box;
 
 public class Client
 {
+    // snake_case の JSON キーと PascalCase のプロパティを対応付ける
     private static readonly JsonSerializerOptions JsonOptions =
-        new() { PropertyNameCaseInsensitive = true };
+        new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
     private readonly HttpClient _http;
     private readonly string _baseUrl;
-    private readonly string _apiKey;
+    private readonly string _accessToken;
 
-    public Client(string baseUrl, string apiKey, HttpClient? http = null)
+    public Client(string baseUrl, string accessToken, HttpClient? http = null)
     {
         _baseUrl = baseUrl.TrimEnd('/');
-        _apiKey = apiKey;
+        _accessToken = accessToken;
         _http = http ?? new HttpClient();
     }
 
-    public Task<Space> GetSpaceAsync() => GetAsync<Space>("/space");
-    public Task<List<Project>> GetProjectsAsync() => GetAsync<List<Project>>("/projects");
-    public Task<Project> GetProjectAsync(string idOrKey) => GetAsync<Project>($"/projects/{idOrKey}");
-    public Task<List<Issue>> GetIssuesAsync(IReadOnlyDictionary<string, string>? query = null) => GetAsync<List<Issue>>("/issues", query);
-    public Task<Issue> GetIssueAsync(string idOrKey) => GetAsync<Issue>($"/issues/{idOrKey}");
-    public Task<List<Comment>> GetIssueCommentsAsync(string idOrKey) => GetAsync<List<Comment>>($"/issues/{idOrKey}/comments");
-    public Task<List<User>> GetUsersAsync() => GetAsync<List<User>>("/users");
-    public Task<List<Status>> GetStatusesAsync() => GetAsync<List<Status>>("/statuses");
-    public Task<List<Priority>> GetPrioritiesAsync() => GetAsync<List<Priority>>("/priorities");
+    public Task<User> GetCurrentUserAsync() => GetAsync<User>("/users/me");
+    public Task<User> GetUserAsync(string id) => GetAsync<User>($"/users/{id}");
+    public Task<Folder> GetFolderAsync(string id) => GetAsync<Folder>($"/folders/{id}");
+    public Task<Collection<Item>> GetFolderItemsAsync(string id, IReadOnlyDictionary<string, string>? query = null) => GetAsync<Collection<Item>>($"/folders/{id}/items", query);
+    public Task<Collection<Collaboration>> GetFolderCollaborationsAsync(string id) => GetAsync<Collection<Collaboration>>($"/folders/{id}/collaborations");
+    public Task<BoxFile> GetFileAsync(string id) => GetAsync<BoxFile>($"/files/{id}");
+    public Task<Collection<Comment>> GetFileCommentsAsync(string id) => GetAsync<Collection<Comment>>($"/files/{id}/comments");
+
+    public Task<Collection<Item>> SearchAsync(string query, IReadOnlyDictionary<string, string>? extra = null)
+    {
+        var merged = new Dictionary<string, string>(extra ?? new Dictionary<string, string>())
+        {
+            ["query"] = query,
+        };
+        return GetAsync<Collection<Item>>("/search", merged);
+    }
 
     private async Task<T> GetAsync<T>(string path, IReadOnlyDictionary<string, string>? query = null)
     {
-        var parameters = new List<string> { $"apiKey={Uri.EscapeDataString(_apiKey)}" };
-        if (query != null)
+        var url = $"{_baseUrl}{path}";
+        if (query is { Count: > 0 })
         {
-            foreach (var (key, value) in query)
-                parameters.Add($"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}");
+            var parameters = query.Select(kv =>
+                $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}");
+            url += $"?{string.Join("&", parameters)}";
         }
-        var url = $"{_baseUrl}{path}?{string.Join("&", parameters)}";
 
-        using var response = await _http.GetAsync(url);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+        using var response = await _http.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)

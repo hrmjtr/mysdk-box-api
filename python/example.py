@@ -10,30 +10,35 @@ from mysdk_box import (
 )
 
 client = Client(
-    base_url=os.environ["BOX_BASE_URL"],
-    api_key=os.environ["BOX_API_KEY"],
+    base_url=os.environ.get("BOX_BASE_URL", "https://api.box.com/2.0"),
+    access_token=os.environ["BOX_ACCESS_TOKEN"],
 )
 
 try:
-    space = client.space()
-    print(f"space: {space['name']} ({space['spaceKey']})")
+    me = client.current_user()
+    print(f"current user: {me['name']} <{me['login']}>")
 
-    print("\nprojects:")
-    for project in client.projects():
-        print(f"  [{project['projectKey']}] {project['name']}")
+    root = client.folder("0")
+    print(f"\nfolder: {root['name']} (size={root['size']})")
 
-    print("\nissues:")
-    for issue in client.issues():
-        print(f"  {issue['issueKey']}: {issue['summary']} ({issue['status']['name']})")
+    print("\nitems in folder 0:")
+    for item in client.folder_items("0")["entries"]:
+        print(f"  [{item['type']}] {item['name']} (id={item['id']})")
 
-    issue_key = "DEMO-1"
-    print(f"\ncomments on {issue_key}:")
-    for comment in client.issue_comments(issue_key):
-        print(f"  {comment['createdUser']['name']}: {comment['content']}")
+    file = client.file("101")
+    print(f"\nfile: {file['name']} size={file['size']} sha1={file['sha1']}")
 
-    print(f"\nusers:      {', '.join(u['name'] for u in client.users())}")
-    print(f"statuses:   {', '.join(s['name'] for s in client.statuses())}")
-    print(f"priorities: {', '.join(p['name'] for p in client.priorities())}")
+    print("\ncomments on file 101:")
+    for comment in client.file_comments("101")["entries"]:
+        print(f"  {comment['created_by']['name']}: {comment['message']}")
+
+    print("\ncollaborations on folder 11:")
+    for collab in client.folder_collaborations("11")["entries"]:
+        print(f"  {collab['accessible_by']['name']}: {collab['role']}")
+
+    print('\nsearch "report":')
+    for item in client.search("report")["entries"]:
+        print(f"  [{item['type']}] {item['name']}")
 except HttpError as e:
     sys.exit(f"HTTP error: status={e.status} body={e.body}")
 except EmptyResponseError as e:

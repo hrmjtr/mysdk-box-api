@@ -5,27 +5,27 @@ require "uri"
 module MySdk
   module Box
     class Client
-      def initialize(base_url:, api_key:)
+      def initialize(base_url:, access_token:)
         @base_url = base_url.chomp("/")
-        @api_key = api_key
+        @access_token = access_token
       end
 
-      def space                     = get("/space")
-      def projects                  = get("/projects")
-      def project(id_or_key)        = get("/projects/#{id_or_key}")
-      def issues(params = {})       = get("/issues", params)
-      def issue(id_or_key)          = get("/issues/#{id_or_key}")
-      def issue_comments(id_or_key) = get("/issues/#{id_or_key}/comments")
-      def users                     = get("/users")
-      def statuses                  = get("/statuses")
-      def priorities                = get("/priorities")
+      def current_user                   = get("/users/me")
+      def user(id)                       = get("/users/#{id}")
+      def folder(id)                     = get("/folders/#{id}")
+      def folder_items(id, params = {})  = get("/folders/#{id}/items", params)
+      def folder_collaborations(id)      = get("/folders/#{id}/collaborations")
+      def file(id)                       = get("/files/#{id}")
+      def file_comments(id)              = get("/files/#{id}/comments")
+      def search(query, params = {})     = get("/search", params.merge(query: query))
 
       private
 
       def get(path, params = {})
         uri = URI.parse(@base_url + path)
-        uri.query = URI.encode_www_form(params.merge(apiKey: @api_key))
-        parse_response(Net::HTTP.get_response(uri))
+        uri.query = URI.encode_www_form(params) unless params.empty?
+        headers = { "Authorization" => "Bearer #{@access_token}" }
+        parse_response(Net::HTTP.get_response(uri, headers))
       end
 
       def parse_response(response)

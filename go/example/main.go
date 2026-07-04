@@ -4,49 +4,56 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"mysdkbox"
 )
 
 func main() {
-	client := mysdkbox.New(os.Getenv("BOX_BASE_URL"), os.Getenv("BOX_API_KEY"))
+	baseURL := os.Getenv("BOX_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api.box.com/2.0"
+	}
+	client := mysdkbox.New(baseURL, os.Getenv("BOX_ACCESS_TOKEN"))
 
-	space, err := client.Space()
+	me, err := client.CurrentUser()
 	exitIf(err)
-	fmt.Printf("space: %s (%s)\n", space.Name, space.SpaceKey)
+	fmt.Printf("current user: %s <%s>\n", me.Name, me.Login)
 
-	projects, err := client.Projects()
+	root, err := client.Folder("0")
 	exitIf(err)
-	fmt.Println("\nprojects:")
-	for _, p := range projects {
-		fmt.Printf("  [%s] %s\n", p.ProjectKey, p.Name)
+	fmt.Printf("\nfolder: %s (size=%d)\n", root.Name, root.Size)
+
+	items, err := client.FolderItems("0", nil)
+	exitIf(err)
+	fmt.Println("\nitems in folder 0:")
+	for _, item := range items.Entries {
+		fmt.Printf("  [%s] %s (id=%s)\n", item.Type, item.Name, item.ID)
 	}
 
-	issues, err := client.Issues(nil)
+	file, err := client.File("101")
 	exitIf(err)
-	fmt.Println("\nissues:")
-	for _, i := range issues {
-		fmt.Printf("  %s: %s (%s)\n", i.IssueKey, i.Summary, i.Status.Name)
+	fmt.Printf("\nfile: %s size=%d sha1=%s\n", file.Name, file.Size, file.SHA1)
+
+	comments, err := client.FileComments("101")
+	exitIf(err)
+	fmt.Println("\ncomments on file 101:")
+	for _, comment := range comments.Entries {
+		fmt.Printf("  %s: %s\n", comment.CreatedBy.Name, comment.Message)
 	}
 
-	issueKey := "DEMO-1"
-	comments, err := client.IssueComments(issueKey)
+	collabs, err := client.FolderCollaborations("11")
 	exitIf(err)
-	fmt.Printf("\ncomments on %s:\n", issueKey)
-	for _, c := range comments {
-		fmt.Printf("  %s: %s\n", c.CreatedUser.Name, c.Content)
+	fmt.Println("\ncollaborations on folder 11:")
+	for _, collab := range collabs.Entries {
+		fmt.Printf("  %s: %s\n", collab.AccessibleBy.Name, collab.Role)
 	}
 
-	users, err := client.Users()
+	results, err := client.Search("report", nil)
 	exitIf(err)
-	statuses, err := client.Statuses()
-	exitIf(err)
-	priorities, err := client.Priorities()
-	exitIf(err)
-	fmt.Printf("\nusers:      %s\n", join(users, func(u mysdkbox.User) string { return u.Name }))
-	fmt.Printf("statuses:   %s\n", join(statuses, func(s mysdkbox.Status) string { return s.Name }))
-	fmt.Printf("priorities: %s\n", join(priorities, func(p mysdkbox.Priority) string { return p.Name }))
+	fmt.Println("\nsearch \"report\":")
+	for _, item := range results.Entries {
+		fmt.Printf("  [%s] %s\n", item.Type, item.Name)
+	}
 }
 
 // エラー種別ごとの分岐の書き方を示すためのヘルパー
@@ -71,12 +78,4 @@ func exitIf(err error) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 	}
 	os.Exit(1)
-}
-
-func join[T any](items []T, name func(T) string) string {
-	names := make([]string, len(items))
-	for i, item := range items {
-		names[i] = name(item)
-	}
-	return strings.Join(names, ", ")
 }

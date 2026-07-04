@@ -18,9 +18,6 @@ ruby/
 gem の慣習(`lib/<gem名>.rb` + `lib/<名前空間ディレクトリ>/`)に合わせているが、
 gemspec は用意していない。gem 化する場合は gemspec を足すだけでよい構成にしてある。
 
-なお仕様書のサンプルは `MySdk::box::Client` だが、Ruby の定数は
-大文字始まりが必須のため `MySdk::Box::Client` としている。
-
 ## 設計の要点
 
 ### 1. 依存は標準ライブラリのみ
@@ -37,41 +34,44 @@ require "uri"
 ### 2. クライアントは「設定を持って GET するだけ」のオブジェクト
 
 ```ruby
-def initialize(base_url:, api_key:)
+def initialize(base_url:, access_token:)
   @base_url = base_url.chomp("/")   # 末尾スラッシュを正規化
-  @api_key = api_key
+  @access_token = access_token
 end
 ```
 
 - キーワード引数にして呼び出し側の可読性を上げる。
-- `chomp("/")` で `https://example.com/api/v2/` のような入力も受け付ける。
+- `chomp("/")` で `https://api.box.com/2.0/` のような入力も受け付ける。
 
 ### 3. API メソッドは 1 行 = 1 エンドポイント
 
 ```ruby
-def space                     = get("/space")
-def projects                  = get("/projects")
-def issues(params = {})       = get("/issues", params)
-def issue_comments(id_or_key) = get("/issues/#{id_or_key}/comments")
+def current_user                  = get("/users/me")
+def folder(id)                    = get("/folders/#{id}")
+def folder_items(id, params = {}) = get("/folders/#{id}/items", params)
+def search(query, params = {})    = get("/search", params.merge(query: query))
 ```
 
 Ruby 3.0+ の endless method(`def name = 式`)を使い、
 「メソッド名 → パス」の対応が一覧表のように読める形にしている。
 共通処理はすべて private の `get` に寄せる。
 
-### 4. リクエストは `Net::HTTP.get_response` の単発呼び出し
+### 4. リクエスト:Bearer 認証はヘッダーで渡す
 
 ```ruby
 def get(path, params = {})
   uri = URI.parse(@base_url + path)
-  uri.query = URI.encode_www_form(params.merge(apiKey: @api_key))
-  parse_response(Net::HTTP.get_response(uri))
+  uri.query = URI.encode_www_form(params) unless params.empty?
+  headers = { "Authorization" => "Bearer #{@access_token}" }
+  parse_response(Net::HTTP.get_response(uri, headers))
 end
 ```
 
+- `Net::HTTP.get_response(uri, headers)` の第 2 引数でヘッダーを渡せるのは
+  **Ruby 3.0 以降**。それ以前や、より細かい制御が必要な場合は
+  `Net::HTTP::Get.new(uri)` にヘッダーを詰めて `Net::HTTP.start` で送る形にする。
 - `URI.encode_www_form` がエスケープを含めてクエリ文字列を組み立てる。
-  文字列連結で `?apiKey=#{key}` と書かないこと(エスケープ漏れの元)。
-- `params.merge(apiKey: @api_key)` で認証キーを必ず付与する。
+  文字列連結で `?query=#{q}` と書かないこと(エスケープ漏れの元)。
 - `Net::HTTP.get_response` は 1 リクエストごとに接続を張る最も単純な API。
   接続の使い回しが必要になったら `Net::HTTP.start` のブロック形式に置き換える
   (「拡張の指針」参照)。
@@ -131,11 +131,12 @@ class UnexpectedResponseError < Error; end # [4]
 
 ### 7. 戻り値は素の Hash / Array
 
-モデルクラス(`Project` クラスなど)into 変換はあえてしない。
+モデルクラス(`Folder` クラスなど)への変換はあえてしない。
 
 - 実装が短くなり、API のレスポンス構造がそのまま見える。
-- キーは JSON のまま文字列(`project["projectKey"]`)。シンボルではない点に注意。
-- ネストの深い取得は `issue.dig("status", "name")` を使うと nil 安全。
+- キーは JSON のまま文字列(`folder["item_status"]`)。シンボルではない点に注意。
+- 一覧系はコレクション形式のまま返すので、要素は `["entries"]` で取り出す。
+  ネストの深い取得は `comment.dig("created_by", "name")` を使うと nil 安全。
 
 ## 動かし方
 
@@ -143,17 +144,19 @@ class UnexpectedResponseError < Error; end # [4]
 python3 mock/server.py &                  # リポジトリルートで
 
 export BOX_BASE_URL=http://localhost:8793
-export BOX_API_KEY=dummy-key
+export BOX_ACCESS_TOKEN=dummy-token
 ruby ruby/example.rb
 ```
 
 `example.rb` は `$LOAD_PATH` を自分で通しているので gem install は不要。
+実 API に対しては `BOX_BASE_URL` を外し、`BOX_ACCESS_TOKEN` に
+Developer Token を設定する。
 
 ## 再実装チェックリスト
 
 1. エラークラス群を定義する(基底 + 4 分類)
-2. `Client#initialize` で base_url 正規化と api_key 保持
-3. private `get(path, params)`: URI 組み立て → `apiKey` 付与 → リクエスト
+2. `Client#initialize` で base_url 正規化と access_token 保持
+3. private `get(path, params)`: URI 組み立て → Authorization ヘッダー付与 → リクエスト
 4. `parse_response`: ステータス → 空 Body → JSON.parse → 型チェック の順で判定
 5. エンドポイントごとの public メソッドを 1 行ずつ足す
 6. モックサーバーの `/broken/*` 5 種で分類が正しいことを確認する
@@ -163,8 +166,11 @@ ruby ruby/example.rb
 - **タイムアウト**: `Net::HTTP.get_response` にはタイムアウト指定がないため、
   `Net::HTTP.start(host, port, use_ssl:, open_timeout:, read_timeout:)` 形式に置き換える。
 - **接続の使い回し**: 同じく `Net::HTTP.start` のブロック内で複数リクエストを送る。
-- **リトライ**: 5xx と通信例外(`Errno::ECONNREFUSED`, `Net::OpenTimeout`)に限って
-  回数制限つきで行う。4xx はリトライしない。
+- **リトライ**: 429(レートリミット)と 5xx、通信例外
+  (`Errno::ECONNREFUSED`, `Net::OpenTimeout`)に限って回数制限つきで行う。
+  429 は `Retry-After` ヘッダーの秒数だけ待つ。他の 4xx はリトライしない。
+- **ページング**: `folder_items` を `offset` を進めながら全件取得する
+  `each_item` のような Enumerator を足すと便利。
 - **モデル化**: 戻り値の Hash を `Struct` や `Data`(Ruby 3.2+)に詰め替えると
   タイポが NoMethodError で検出できるようになる。型付き実装の雰囲気は
   Go / C# 実装([go.md](go.md) / [csharp.md](csharp.md))が参考になる。

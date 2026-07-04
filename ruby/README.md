@@ -1,6 +1,6 @@
 # mysdk-box (Ruby)
 
-box API の読み取り系を扱う小さなクライアント。標準ライブラリ
+Box API の読み取り系を扱う小さなクライアント。標準ライブラリ
 (`net/http`, `json`)のみで実装している。
 
 実装の設計解説と再実装の手引きは [docs/ruby.md](../docs/ruby.md) にある。
@@ -11,23 +11,29 @@ box API の読み取り系を扱う小さなクライアント。標準ライブ
 require "mysdk-box"
 
 client = MySdk::Box::Client.new(
-  base_url: "https://example.com/api/v2",
-  api_key: ENV["BOX_API_KEY"]
+  base_url: "https://api.box.com/2.0",
+  access_token: ENV["BOX_ACCESS_TOKEN"]
 )
 
-client.space                    # スペース情報
-client.projects                 # プロジェクト一覧
-client.project("DEMO")          # プロジェクト情報(ID またはキー)
-client.issues                   # 課題一覧
-client.issues(count: 20)        # クエリパラメータも渡せる
-client.issue("DEMO-1")          # 課題情報
-client.issue_comments("DEMO-1") # 課題コメント一覧
-client.users                    # ユーザー一覧
-client.statuses                 # 状態一覧
-client.priorities               # 優先度一覧
+client.current_user                     # 現在のユーザー情報
+client.user("1")                        # ユーザー情報
+client.folder("0")                      # フォルダ情報("0" はルート)
+client.folder_items("0")                # フォルダ内アイテム一覧
+client.folder_items("0", limit: 10)     # クエリパラメータも渡せる
+client.folder_collaborations("11")      # コラボレーション一覧
+client.file("101")                      # ファイル情報
+client.file_comments("101")             # ファイルコメント一覧
+client.search("report")                 # 検索
 ```
 
-戻り値はパース済みの JSON(`Hash` / `Array`)をそのまま返す。
+戻り値はパース済みの JSON(`Hash`)をそのまま返す。
+一覧系はコレクション形式なので、要素は `["entries"]` で取り出す。
+
+```ruby
+client.folder_items("0")["entries"].each do |item|
+  puts "#{item["type"]}: #{item["name"]}"
+end
+```
 
 ## エラー
 
@@ -48,9 +54,12 @@ client.priorities               # 優先度一覧
 python3 ../mock/server.py &
 
 export BOX_BASE_URL=http://localhost:8793
-export BOX_API_KEY=dummy-key
+export BOX_ACCESS_TOKEN=dummy-token
 ruby example.rb
 ```
+
+実際の Box API に対しては `BOX_BASE_URL` を外し、
+`BOX_ACCESS_TOKEN` に Developer Token を設定する。
 
 ## ファイル構成
 

@@ -7,44 +7,44 @@ from .errors import EmptyResponseError, HttpError, ParseError, UnexpectedRespons
 
 
 class Client:
-    def __init__(self, base_url, api_key):
+    def __init__(self, base_url, access_token):
         self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
+        self.access_token = access_token
 
-    def space(self):
-        return self._get("/space")
+    def current_user(self):
+        return self._get("/users/me")
 
-    def projects(self):
-        return self._get("/projects")
+    def user(self, user_id):
+        return self._get(f"/users/{user_id}")
 
-    def project(self, id_or_key):
-        return self._get(f"/projects/{id_or_key}")
+    def folder(self, folder_id):
+        return self._get(f"/folders/{folder_id}")
 
-    def issues(self, **params):
-        return self._get("/issues", params)
+    def folder_items(self, folder_id, **params):
+        return self._get(f"/folders/{folder_id}/items", params)
 
-    def issue(self, id_or_key):
-        return self._get(f"/issues/{id_or_key}")
+    def folder_collaborations(self, folder_id):
+        return self._get(f"/folders/{folder_id}/collaborations")
 
-    def issue_comments(self, id_or_key):
-        return self._get(f"/issues/{id_or_key}/comments")
+    def file(self, file_id):
+        return self._get(f"/files/{file_id}")
 
-    def users(self):
-        return self._get("/users")
+    def file_comments(self, file_id):
+        return self._get(f"/files/{file_id}/comments")
 
-    def statuses(self):
-        return self._get("/statuses")
-
-    def priorities(self):
-        return self._get("/priorities")
+    def search(self, query, **params):
+        return self._get("/search", {"query": query, **params})
 
     def _get(self, path, params=None):
-        query = dict(params or {})
-        query["apiKey"] = self.api_key
-        url = f"{self.base_url}{path}?{urllib.parse.urlencode(query)}"
+        url = f"{self.base_url}{path}"
+        if params:
+            url += f"?{urllib.parse.urlencode(params)}"
+        request = urllib.request.Request(
+            url, headers={"Authorization": f"Bearer {self.access_token}"}
+        )
 
         try:
-            with urllib.request.urlopen(url) as response:
+            with urllib.request.urlopen(request) as response:
                 body = response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             raise HttpError(e.code, e.read().decode("utf-8", "replace")) from e
