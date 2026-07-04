@@ -16,9 +16,24 @@ python/   Python 実装(標準ライブラリのみ)
 go/       Go 実装(標準ライブラリのみ)
 csharp/   C# 実装(.NET 8 / 標準ライブラリのみ)
 mock/     サンプル実行用のモック API サーバー(Python)
+docs/     再実装のためのドキュメント
 ```
 
 各ディレクトリの README に、使い方とサンプルの実行方法を記載している。
+
+## ドキュメント
+
+自分で再実装するときは、次の順で読む。
+
+1. [docs/api.md](docs/api.md) — box API の共通仕様(エンドポイント、データモデル、エラー分類)
+2. 実装する言語の解説 — 設計の要点、再実装チェックリスト、拡張の指針
+   - [docs/ruby.md](docs/ruby.md) — Ruby 実装の解説
+   - [docs/python.md](docs/python.md) — Python 実装の解説(Ruby 経験者向け)
+   - [docs/go.md](docs/go.md) — Go 実装の解説(Ruby 経験者向け)
+   - [docs/csharp.md](docs/csharp.md) — C# 実装の解説(Ruby 経験者向け)
+
+Python / Go / C# の解説は「Ruby との対応表」から始まり、
+Ruby 実装との違いを軸に書いてある。
 
 ## 対応 API
 

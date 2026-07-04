@@ -3,6 +3,9 @@
 box API の読み取り系を扱う小さなクライアント。.NET 8 の標準ライブラリ
 (`HttpClient`, `System.Text.Json`)のみで実装している。
 
+実装の設計解説と再実装の手引き(Ruby 経験者向け)は
+[docs/csharp.md](../docs/csharp.md) にある。
+
 ## 使い方
 
 ```csharp
