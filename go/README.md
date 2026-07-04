@@ -2,8 +2,11 @@
 
 Box API の読み取り系を扱う小さなクライアント。標準ライブラリのみで実装している。
 
-実装の設計解説と再実装の手引き(Ruby 経験者向け)は
-[docs/go.md](../docs/go.md) にある。
+ドキュメント(Go をほとんど知らない人でも読める):
+
+- [docs/01-setup.md](docs/01-setup.md) — 環境構築と最小限の言語入門
+- [docs/02-implementation.md](docs/02-implementation.md) — 実装の設計解説
+- [docs/03-reimplement.md](docs/03-reimplement.md) — ステップバイステップ再実装ガイド
 
 ## 使い方
 

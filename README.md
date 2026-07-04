@@ -24,17 +24,27 @@ docs/     再実装のためのドキュメント
 
 ## ドキュメント
 
-自分で再実装するときは、次の順で読む。
+共通ドキュメント(`docs/`):
 
-1. [docs/api.md](docs/api.md) — Box API の共通仕様(エンドポイント、データモデル、エラー分類)
-2. 実装する言語の解説 — 設計の要点、再実装チェックリスト、拡張の指針
-   - [docs/ruby.md](docs/ruby.md) — Ruby 実装の解説
-   - [docs/python.md](docs/python.md) — Python 実装の解説(Ruby 経験者向け)
-   - [docs/go.md](docs/go.md) — Go 実装の解説(Ruby 経験者向け)
-   - [docs/csharp.md](docs/csharp.md) — C# 実装の解説(Ruby 経験者向け)
+- [docs/api.md](docs/api.md) — Box API の共通仕様(エンドポイント、データモデル、エラー分類)
+- [docs/roadmap.md](docs/roadmap.md) — 再実装ロードマップ(ステップの順序と各ステップの完了条件)
 
-Python / Go / C# の解説は「Ruby との対応表」から始まり、
-Ruby 実装との違いを軸に書いてある。
+言語別ドキュメント(各言語の `docs/` 内)。
+**その言語をほとんど触ったことがないエンジニア**でも進められるように書いてある。
+
+| 言語   | 01 環境構築 + 言語入門 | 02 実装解説 | 03 再実装ガイド |
+|--------|------------------------|-------------|-----------------|
+| Ruby   | [ruby/docs/01-setup.md](ruby/docs/01-setup.md) | [02-implementation.md](ruby/docs/02-implementation.md) | [03-reimplement.md](ruby/docs/03-reimplement.md) |
+| Python | [python/docs/01-setup.md](python/docs/01-setup.md) | [02-implementation.md](python/docs/02-implementation.md) | [03-reimplement.md](python/docs/03-reimplement.md) |
+| Go     | [go/docs/01-setup.md](go/docs/01-setup.md) | [02-implementation.md](go/docs/02-implementation.md) | [03-reimplement.md](go/docs/03-reimplement.md) |
+| C#     | [csharp/docs/01-setup.md](csharp/docs/01-setup.md) | [02-implementation.md](csharp/docs/02-implementation.md) | [03-reimplement.md](csharp/docs/03-reimplement.md) |
+
+読む順番:
+
+1. `docs/api.md` で API を理解する
+2. 実装する言語の `01-setup.md` で環境と最小限の文法を押さえる
+3. `02-implementation.md` でこのリポジトリの実装を読み解く
+4. `docs/roadmap.md` と `03-reimplement.md` に沿って、ステップバイステップで自分の手で再実装する
 
 ## 対応 API
 

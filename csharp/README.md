@@ -3,8 +3,11 @@
 Box API の読み取り系を扱う小さなクライアント。.NET 8 の標準ライブラリ
 (`HttpClient`, `System.Text.Json`)のみで実装している。
 
-実装の設計解説と再実装の手引き(Ruby 経験者向け)は
-[docs/csharp.md](../docs/csharp.md) にある。
+ドキュメント(C# をほとんど知らない人でも読める):
+
+- [docs/01-setup.md](docs/01-setup.md) — 環境構築と最小限の言語入門
+- [docs/02-implementation.md](docs/02-implementation.md) — 実装の設計解説
+- [docs/03-reimplement.md](docs/03-reimplement.md) — ステップバイステップ再実装ガイド
 
 ## 使い方
 
@@ -30,7 +33,7 @@ await client.SearchAsync("report");                 // 検索
 戻り値は `Models.cs` に定義した record(必要最小限のフィールドのみ)。
 一覧系は `Collection<T>` に包まれるので、要素は `.Entries` で取り出す。
 ファイルを表す型は `System.IO.File` との衝突を避けるため `BoxFile`
-という名前になっている(詳細は docs/csharp.md)。
+という名前になっている(詳細は docs/02-implementation.md)。
 
 ```csharp
 foreach (var item in (await client.GetFolderItemsAsync("0")).Entries)
