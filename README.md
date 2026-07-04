@@ -1,5 +1,8 @@
 # mysdk-box
 
+> [!IMPORTANT]
+> このリポジトリは [hrmjtr/etudes](https://github.com/hrmjtr/etudes) の `box/` に移行し、アーカイブされた。
+
 Box API(box.com / Box Platform REST API)を利用するための、
 小さく分かりやすい API ライブラリ集。
 
